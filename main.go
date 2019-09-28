@@ -59,9 +59,11 @@ func main() {
 	//password = ""
 
 	mp := md5.Sum([]byte(password))
+	fmt.Println("生成userHash...")
 	userHash = d(email, hex.EncodeToString(mp[:]))
 	fmt.Println(userHash)
 	uInfo := getUserInfo(userHash)
+	fmt.Println("生成uid...")
 	uid = b(strconv.Itoa(uInfo.Userid))
 	getUserPost("")
 	getUserReply("")
@@ -70,8 +72,9 @@ func main() {
 
 // get userinfo
 func getUserInfo(s string) Uinfo {
+	fmt.Println("获取用户信息...")
 	url := "https://my.ruanmei.com/api/User/Get?userHash=" + s + "&extra=4%7Cithome_iphone&appver=692"
-	fmt.Println(url)
+	//fmt.Println(url)
 	rsp, err := http.Get(url)
 	if err != nil {
 		fmt.Println(err)
@@ -112,11 +115,12 @@ func getUserPost(pid string) {
 
 		if len(ps) == 0 {
 			_ = rsp.Body.Close()
-			fmt.Println("no more post, start del")
-			fmt.Println("posts count: " + strconv.Itoa(len(posts)))
+			fmt.Println("已获取所有发帖，共 " + strconv.Itoa(len(posts)) + " 条数据...")
+			fmt.Println("开始删除...")
 			delPost()
 			return
 		}
+		fmt.Println("获取 " + strconv.Itoa(len(ps)) + " 条...")
 		pid = strconv.Itoa(ps[len(ps)-1].Id)
 		for _, p := range ps {
 			posts = append(posts, p)
@@ -134,7 +138,7 @@ func delPost() {
 		id = posts[0].Id
 		t = posts[0].T
 	} else {
-		fmt.Println("del post over")
+		fmt.Println("已删除所有帖子...")
 		return
 	}
 
@@ -160,7 +164,7 @@ var replyList []ReplyItem
 // get post reply
 func getUserReply(rid string) {
 	url := "https://apiquan.ithome.com/api/reply/getuserreply?userid=" + uid + "&rid=" + rid
-	fmt.Println(url)
+	//fmt.Println(url)
 	rsp, err := http.Get(url)
 	if err != nil {
 		fmt.Println(err)
@@ -173,12 +177,12 @@ func getUserReply(rid string) {
 	var r []ReplyResult
 	_ = json.Unmarshal(body, &r)
 	if len(r) == 0 {
-		fmt.Println("no more data, start del")
-		_ = rsp.Body.Close()
-		fmt.Println("reply count: " + strconv.Itoa(len(replyList)))
+		fmt.Println("已获取所有回复，帖子回复总数 " + strconv.Itoa(len(replyList)))
+		fmt.Println("开始删除...")
 		delReply()
 		return
 	}
+	fmt.Println("获取 " + strconv.Itoa(len(r)) + " 条帖子回复")
 	for _, rp := range r {
 		replyList = append(replyList, ReplyItem{rp.M.Ci, rp.M.C})
 		rid = strconv.Itoa(rp.M.Ci)
@@ -193,7 +197,7 @@ func delReply() {
 	if len(replyList) > 0 {
 		reply = replyList[0]
 	} else {
-		fmt.Println("del reply over")
+		fmt.Println("已删除所有帖子回复...")
 		return
 	}
 	url := "http://apiquan.ithome.com/api/reply/userdel?userHash=" + userHash + "&replyId=" + strconv.Itoa(reply.Ci)
@@ -211,9 +215,10 @@ func delReply() {
 	_ = json.Unmarshal(body, r)
 	fmt.Println(r.Msg)
 	if strings.Contains(r.Msg, "上限") {
-		fmt.Println("")
+		fmt.Println("达到删除上限，请明天继续...")
 		return
 	}
+	fmt.Println(strconv.Itoa(reply.Ci) + " -- " + r.Msg)
 	replyList = replyList[1:]
 	delReply()
 }
@@ -255,8 +260,8 @@ func getMyComment(cid string) {
 	_ = json.Unmarshal(body, &r)
 	if len(r) == 0 {
 		if erlou {
-			fmt.Println("no more data, start del")
-			fmt.Println("comment count: " + strconv.Itoa(len(commentList)))
+			fmt.Println("已获取所有评论，评论总数: " + strconv.Itoa(len(commentList)))
+			fmt.Println("开始删除...")
 			delComment()
 			return
 		} else {
@@ -269,6 +274,7 @@ func getMyComment(cid string) {
 		commentList = append(commentList, ReplyItem{rp.M.Ci, rp.M.C})
 		cid = strconv.Itoa(rp.M.Ci)
 	}
+	fmt.Println("获取 " + strconv.Itoa(len(r)) + " 条评论")
 	getMyComment(cid)
 }
 
@@ -278,7 +284,7 @@ func delComment() {
 	if len(commentList) > 0 {
 		reply = commentList[0]
 	} else {
-		fmt.Println("del reply over")
+		fmt.Println("已删除所有评论...")
 		return
 	}
 	url := "https://api.ithome.com/api/comment/userdc?userHash=" + userHash + "&cid=" + b(strconv.Itoa(reply.Ci))
@@ -295,8 +301,9 @@ func delComment() {
 	r := &DelResult{}
 	_ = json.Unmarshal(body, r)
 	fmt.Println(r.Msg)
+	//好像没有上限限制
 	if strings.Contains(r.Msg, "上限") {
-		fmt.Println("")
+		fmt.Println("删除达到上限，请明天继续...")
 		return
 	}
 	commentList = commentList[1:]
