@@ -35,7 +35,7 @@ type DelResult struct {
 	Msg string `json:"msg"`
 }
 
-// comment also use this
+// 评论也使用这个结构体
 type ReplyResult struct {
 	M ReplyItem `json:"M"`
 }
